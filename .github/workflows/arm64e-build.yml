@@ -1,0 +1,63 @@
+name: arm64e roothide build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Makefile'
+      - 'control'
+      - 'build.sh'
+      - 'Core/**'
+      - 'Helper/**'
+      - 'Preferences/**'
+      - 'Updater/**'
+      - 'Shared/**'
+      - 'layout/**'
+      - '.github/workflows/arm64e-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arm64e-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: brew install ldid dpkg
+
+      - name: Prepare Theos
+        run: |
+          git clone --recursive --depth 1 https://github.com/roothide/theos.git "$RUNNER_TEMP/theos"
+          git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/ios-sdks"
+          cp -R "$RUNNER_TEMP/ios-sdks/"*.sdk "$RUNNER_TEMP/theos/sdks/"
+          echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+
+      - name: Build arm64e roothide package
+        run: |
+          set -o pipefail
+          ./build.sh roothide 2>&1 | tee build-arm64e.log
+
+      - name: Inspect package
+        run: |
+          for p in packages/*.deb; do
+            echo "=== $p ==="
+            dpkg-deb -I "$p" | grep -E 'Package|Version|Architecture|Depends'
+          done
+
+      - name: Upload package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kayoko-arm64e-roothide
+          path: |
+            packages/*.deb
+            build-arm64e.log
+          if-no-files-found: warn
