@@ -48,7 +48,7 @@
 			<key>cell</key>
 			<string>PSLinkListCell</string>
 			<key>default</key>
-			<integer>38</integer>
+			<integer>2</integer>
 			<key>detail</key>
 			<string>KayokoListItemsController</string>
 			<key>defaults</key>
